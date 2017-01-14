@@ -31,10 +31,10 @@ Adafruit_Simple_AHRS ahrs(&lsm.getAccel(), &lsm.getMag());
 
 
 volatile int roll_channel_1, pitch_channel_2, throttle_channel_3, yaw_channel_4, control_channel_5, control_channel_6;
-int start, fuzzy_yaw_out_tilt, pitch_angle1, pitch_angle2, roll_angle1, roll_angle2, yaw_angle1, yaw_angle2, cal_int, mode, currentTime, timeslap, sleep;;
+int start, fuzzy_yaw_out_tilt, pitch_angle1, pitch_angle2, yaw_angle1, yaw_angle2, cal_int, mode, currentTime, timeslap, sleep;;
 unsigned long timer_1, timer_2, timer_3, timer_4, timer_5, timer_6;
-double roll_sensor, pitch_sensor, yaw_sensor, roll_setpoint, pitch_setpoint, yaw_setpoint, forward_speed;
-double fuzzy_roll_out, fuzzy_pitch_out, fuzzy_yaw_out, esc1_out, esc2_out, esc3_out, esc4_out;
+double roll_sensor, pitch_sensor, yaw_sensor, roll_setpoint, pitch_setpoint, yaw_setpoint, forward_speed, roll_manual1, roll_manual2;
+double fuzzy_roll_out, fuzzy_pitch_out, fuzzy_yaw_out, esc1_out, esc2_out, esc3_out, esc4_out, servo1_out, servo2_out, servo3_out, servo4_out;
 double roll_error = 0, pitch_error = 0, yaw_error = 0, roll_out, pitch_out, yaw_out, throttle, previous_error_roll = 0, previous_error_pitch = 0, previous_error_yaw = 0, roll_error_change, pitch_error_change, yaw_error_change;
 double heading, Pitch_combined, Roll_combined, Heading_combined, dt = 0.02, gyro_pitch, gyro_roll, gyro_yaw, gyro_pitch_input, gyro_roll_input, gyro_yaw_input, roll, pitch;
 boolean reverseMode;
@@ -834,11 +834,6 @@ void setup(void) {
     start ++;                                                  //While waiting increment start whith every loop.
 
     delayMicroseconds(900);
-    //esc3.writeMicroseconds(1060);
-    //esc4.writeMicroseconds(1060);
-    //esc1.writeMicroseconds(1060);
-    //esc2.writeMicroseconds(1060);
-    //delay(3);//Wait 3 milliseconds before the next loop.
     if (start == 125) {                                       //Every 125 loops (500ms).
       digitalWrite(12, !digitalRead(12));                      //Change the led status.
       start = 0;                                               //Start again at 0.
@@ -857,6 +852,11 @@ void loop(void) {
     servo2.write(90);
     servo3.write(90);
     servo4.write(90);
+
+    esc1.writeMicroseconds(1480);
+    esc2.writeMicroseconds(1480);
+    esc3.writeMicroseconds(1480);
+    esc4.writeMicroseconds(1480);
   }
 
   //TO-DO: Change initiation process, use the toggle or position switches fro arming.
@@ -877,23 +877,20 @@ void loop(void) {
     start = 0;
     digitalWrite(12, LOW);
     Serial.println("Third");
+
   }
 
   /*------------Convert signals of RF from 1495-1880, to 0-80 degrees for ROLL---*/
   roll_setpoint = 0;
   if (roll_channel_1 > 1495) { //when roll stick is from center to highest
     if (roll_channel_1 > 1880) roll_channel_1 = 1880;
-    roll_setpoint = map(roll_channel_1, 1495, 1880, 0, 80);
 
-    roll_angle1 = map(roll_channel_1, 1495, 1880, 90, 0);    //Map 1510-2000 to 90-0 degrees as the output range for servo1.
-    roll_angle2 = map(roll_channel_1, 1495, 1880, 90, 180);  //Map 1510-2000 to 90-180 degrees as the output range for servo2.
+    roll_setpoint = map(roll_channel_1, 1495, 1880, 90, 180);
   }
   else if (roll_channel_1 < 1455) { //when roll stick is from center to lowest
     if (roll_channel_1 < 1055) roll_channel_1 = 1055;
-    roll_setpoint = map(roll_channel_1, 1455, 1055, 0, -80);
 
-    roll_angle1 = map(roll_channel_1, 1455, 1055, 90, 180);    //Map 1510-2000 to 90-0 degrees as the output range for servo1.
-    roll_angle2 = map(roll_channel_1, 1455, 1055, 90, 0);  //Map 1510-2000 to 90-180 degrees as the output range for servo2.
+    roll_setpoint = map(roll_channel_1, 1455, 1055, 90, 0);
   }
 
   /*------------Convert signals of RF from 1510-1880, to 0-80 degrees for PITCH---*/
@@ -902,57 +899,55 @@ void loop(void) {
     if (pitch_channel_2 > 1880) pitch_channel_2 = 1880;
     forward_speed = map(pitch_channel_2, 1510, 1880, 0, 500);  // Map 1510-2000 to 0-500 millissecond as the range for forward speed.
 
-    if (pitch_channel_2 > 1470 && pitch_channel_2 < 1510) {
-      pitch_angle1 = 90;
-      pitch_angle2 = 90;
-    }
     pitch_angle1 = map(pitch_channel_2, 1510, 1880, 90, 0);    //Map 1510-2000 to 90-0 degrees as the output range for servo3.
     pitch_angle2 = map(pitch_channel_2, 1510, 1880, 90, 180);  //Map 1510-2000 to 90-180 degrees as the output range for servo4.
+
   }
   else if (pitch_channel_2 < 1470) { //when pitch stick is from center to lowest
     if (pitch_channel_2 < 1055) pitch_channel_2 = 1055;
     forward_speed = map(pitch_channel_2, 1470, 1055, 0, 500);// Map 1470-1055 to 0-500 millissecond as the range for forward speed.
 
-    if (pitch_channel_2 > 1470 && pitch_channel_2 < 1510) {
-      pitch_angle1 = 90;
-      pitch_angle2 = 90;
-    }
     pitch_angle1 = map(pitch_channel_2, 1470, 1055, 90, 180);//Map 1470-1055 to 90-180 degrees as the output range for servo3.
     pitch_angle2 = map(pitch_channel_2, 1470, 1055, 90, 0);//Map 1470-1055 to 90-0 degrees as the output range for servo4.
+
+  } else {
+    pitch_angle1 = 90;
+    pitch_angle2 = 90;
   }
 
-  /*------------Convert signals from RF from 1490-1880, to 0-80 degrees for YAW---*/
+  /*------------Convert signals from RF from 1490-1880, to 0-180 degrees for YAW---*/
   yaw_setpoint = 0;
   if (yaw_channel_4 > 1490) { //when yaw stick is from center to highest
     if (yaw_channel_4 > 1880) yaw_channel_4 = 1880;
-    yaw_setpoint = map(yaw_channel_4, 1490, 1880, 0, 80);
 
-    if (yaw_channel_4 > 1450 && yaw_channel_4 < 1490) {
-      yaw_angle1 = 90;
-      yaw_angle2 = 90;
-    }
-    yaw_angle1 = map(yaw_channel_4, 1490, 1880, 90, 180);//Map 1470-1055 to 90-180 degrees as the output range for servo3.
-    yaw_angle2 = map(yaw_channel_4, 1490, 1880, 90, 180);//Map 1470-1055 to 90-0 degrees as the output range for servo4.
+    yaw_setpoint = map(yaw_channel_4, 1490, 1880, 0, 270);
+
+    yaw_angle1 = map(yaw_channel_4, 1490, 1880, 90, 0);//Map 1470-1055 to 90-180 degrees as the output range for servo1.
+    yaw_angle2 = map(yaw_channel_4, 1490, 1880, 90, 0);//Map 1470-1055 to 90-0 degrees as the output range for servo2.
+
   }
   else if (yaw_channel_4 < 1450) { //when yaw stick is from center to lowest
     if (yaw_channel_4 < 1055) yaw_channel_4 = 1055;
-    yaw_setpoint = map(yaw_channel_4, 1450, 1055, 0, -80);
 
-    if (yaw_channel_4 > 1450 && yaw_channel_4 < 1490) {
-      yaw_angle1 = 90;
-      yaw_angle2 = 90;
-    }
-    yaw_angle1 = map(yaw_channel_4, 1450, 1055, 90, 0);//Map 1470-1055 to 90-180 degrees as the output range for servo3.
-    yaw_angle2 = map(yaw_channel_4, 1450, 1055, 90, 0);//Map 1470-1055 to 90-0 degrees as the output range for servo4.
+    yaw_setpoint = map(yaw_channel_4, 1450, 1055, 360, 90);
+
+    yaw_angle1 = map(yaw_channel_4, 1450, 1055, 90, 180);//Map 1470-1055 to 90-180 degrees as the output range for servo1.
+    yaw_angle2 = map(yaw_channel_4, 1450, 1055, 90, 180);//Map 1470-1055 to 90-0 degrees as the output range for servo2.
+
+  } else {
+    yaw_setpoint = 360;
+    yaw_angle1 = 90;
+    yaw_angle2 = 90;
   }
 
-  print_signals();
+  //print_signals();
   getsignal_in();
 
   /*----------Get the error and the change of error-----------*/
-  roll_error = (roll_setpoint) - (Roll_combined);
+  roll_error = (roll_setpoint) + (Roll_combined);
   pitch_error = (Pitch_combined);
   yaw_error = (yaw_setpoint) - (Heading_combined);
+
   roll_error_change = roll_error - previous_error_roll;
   pitch_error_change = pitch_error - previous_error_pitch;
   yaw_error_change = yaw_error - previous_error_yaw;
@@ -988,15 +983,26 @@ void loop(void) {
     }
 
     /*----------PITCH MANIPULATION -----------------*/
-    pitchManipulation = yaw_out + fuzzy_pitch_out;
+    //pitchManipulation = yaw_out + fuzzy_pitch_out;
+    pitchManipulation = fuzzy_pitch_out;
     if (pitch_error > 2) {
       //if blimp is tilting backwards
 
       pitchThrustDown = map(pitchManipulation, 0, 1000, 1490, 1880); // thrust downward
       pitchThrustUp = map(pitchManipulation, 0, 1000, 1470, 1070); // thrust upward
 
-      esc1_out = pitchThrustDown;
-      esc2_out = pitchThrustUp;
+      esc1_out = pitchThrustUp;
+      esc2_out = pitchThrustDown;
+      //esc3_out = rollThrustDown;
+      //esc4_out = rollThrustDown;
+
+      if (Pitch_combined < 0) {
+        servo3.write(90 + Pitch_combined);
+        servo4.write(90 - Pitch_combined);
+      } else {
+        servo3.write(90 - Pitch_combined);
+        servo4.write(90 + Pitch_combined);
+      }
     }
     else if (pitch_error < -2) {
       //if blimp is tilting forward
@@ -1006,10 +1012,20 @@ void loop(void) {
 
       esc1_out = pitchThrustUp;
       esc2_out = pitchThrustDown;
+      //esc3_out = rollThrustDown;
+      //esc4_out = rollThrustDown;
+
+      if (Pitch_combined < 0) {
+        servo3.write(90 - Pitch_combined);
+        servo4.write(90 + Pitch_combined);
+      } else {
+        servo3.write(90 + Pitch_combined);
+        servo4.write(90 - Pitch_combined);
+      }
     }
     else {
-      esc1_out = 1480;
-      esc2_out = 1480;
+      esc1_out = 1480; //Motor Stop
+      esc2_out = 1480; //Motor Stop
     }
 
     /*---------------------COMBINED OUTPUT ---------------------*/
@@ -1027,20 +1043,42 @@ void loop(void) {
         rollThrustDown = map(rollManipulation, 0, 1000, 1490, 1880); // thrust downward
         rollThrustUp = map(rollManipulation, 0, 1000, 1470, 1070); // thrust upward
 
-        esc3_out = rollThrustDown;
-        esc4_out = rollThrustUp;
+        //esc1_out = pitchThrustDown;
+        //esc2_out = pitchThrustDown;
+        esc3_out = rollThrustUp;
+        esc4_out = rollThrustDown;
+
+        if (Roll_combined < 0) {
+          servo1.write(90 + Roll_combined);
+          servo2.write(90 - Roll_combined);
+        } else {
+          servo1.write(90 - Roll_combined);
+          servo2.write(90 + Roll_combined);
+        }
+
       }
       else if (roll_error < -2) {
+        //if blimp is tilting to the left
 
         rollThrustDown = map(rollManipulation, 0, 1000, 1490, 1880); // thrust downward
         rollThrustUp = map(rollManipulation, 0, 1000, 1470, 1070); // thrust upward
 
-        esc3_out = rollThrustUp;
-        esc4_out = rollThrustDown;
+        //esc1_out = pitchThrustDown;
+        //esc2_out = pitchThrustDown;
+        esc3_out = rollThrustDown;
+        esc4_out = rollThrustUp;
+
+        if (Roll_combined < 0) {
+          servo1.write(90 - Roll_combined);
+          servo2.write(90 + Roll_combined);
+        } else {
+          servo1.write(90 + Roll_combined);
+          servo2.write(90 - Roll_combined);
+        }
       }
       else {
-        esc3_out = 1480;
-        esc4_out = 1480;
+        esc3_out = 1480; //Motor Stop
+        esc4_out = 1480; //Motor Stop
       }
 
     }
@@ -1051,10 +1089,11 @@ void loop(void) {
     esc3.writeMicroseconds(esc3_out);
     esc4.writeMicroseconds(esc4_out);
 
-    servo1.write(fuzzy_yaw_out_tilt + roll_angle1 + yaw_angle1); //TO-DO: map total value to total resolution
-    servo2.write(fuzzy_yaw_out_tilt + roll_angle2 + yaw_angle2); //TO-DO: map total value to total resolution
-    servo3.write(pitch_angle1);
-    servo4.write(pitch_angle2);
+
+    //servo1.write(servo1_out);
+    //servo2.write(servo2_out);
+    //servo3.write(pitch_angle1);
+    //servo4.write(pitch_angle2);
 
     /*
       Serial.print("\n");
@@ -1133,26 +1172,15 @@ void print_signals() {
 
 /*---------------------GET SENSOR SIGNAL AND USE COMPLIMENTARY FILTER FOR SMOOTH DATA-----------------*/
 void getsignal_in() {
-  /* Get a new sensor event */
-  sensors_event_t event;
-  bno.getEvent(&event);
+
+  // Possible vector values can be:
+  // - VECTOR_ACCELEROMETER - m/s^2
+  // - VECTOR_MAGNETOMETER  - uT
+  // - VECTOR_GYROSCOPE     - rad/s
   // - VECTOR_EULER         - degrees
+  // - VECTOR_LINEARACCEL   - m/s^2
+  // - VECTOR_GRAVITY       - m/s^2
   imu::Vector<3> euler = bno.getVector(Adafruit_BNO055::VECTOR_EULER);
-  imu::Quaternion quat = bno.getQuat();
-
-  //TO-DO: Check if quat.toEuler.x() is the same as euler.x() and event.orientation.x etc;
-  quat.toEuler().x(); //HEADING
-  quat.toEuler().y(); //PITCH
-  quat.toEuler().z(); //ROLL
-
-  euler.x(); //HEADING
-  euler.y(); //PITCH
-  euler.z(); //ROLL
-
-  heading = event.orientation.x; //HEADING
-  pitch = event.orientation.y; //PITCH
-  roll = event.orientation.z; //ROLL
-  //TO-DO: Check if quat.toEuler.x() is the same as euler.x() and event.orientation.x etc;
 
   Roll_combined = euler.z();
   Pitch_combined = euler.y();
