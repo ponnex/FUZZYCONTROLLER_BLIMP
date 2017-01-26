@@ -945,6 +945,7 @@ void loop(void) {
 
   /*----------Get the error and the change of error-----------*/
   roll_error = (roll_setpoint) + (Roll_combined);
+  //Serial.println(roll_error);
   pitch_error = (Pitch_combined);
   yaw_error = (yaw_setpoint) - (Heading_combined);
 
@@ -1010,8 +1011,8 @@ void loop(void) {
       pitchThrustDown = map(pitchManipulation, 0, 1000, 1490, 1880); // thrust downward
       pitchThrustUp = map(pitchManipulation, 0, 1000, 1470, 1070); // thrust upward
 
-      esc1_out = pitchThrustUp;
-      esc2_out = pitchThrustDown;
+      esc1_out = pitchThrustDown;
+      esc2_out = pitchThrustUp;
       //esc3_out = rollThrustDown;
       //esc4_out = rollThrustDown;
 
@@ -1045,9 +1046,9 @@ void loop(void) {
 
         //esc1_out = pitchThrustDown;
         //esc2_out = pitchThrustDown;
-        esc3_out = rollThrustUp;
-        esc4_out = rollThrustDown;
-
+        esc3_out = rollThrustDown;
+        esc4_out = rollThrustUp;
+        
         if (Roll_combined < 0) {
           servo1.write(90 + Roll_combined);
           servo2.write(90 - Roll_combined);
@@ -1065,8 +1066,8 @@ void loop(void) {
 
         //esc1_out = pitchThrustDown;
         //esc2_out = pitchThrustDown;
-        esc3_out = rollThrustDown;
-        esc4_out = rollThrustUp;
+        esc3_out = rollThrustUp;
+        esc4_out = rollThrustDown;
 
         if (Roll_combined < 0) {
           servo1.write(90 - Roll_combined);
